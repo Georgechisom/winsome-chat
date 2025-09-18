@@ -10,6 +10,11 @@ export default function Home() {
 
   useEffect(() => {
     // Always redirect to login page
+    // if (isConnected) {
+    //   router.push("/dashboard");
+    // } else {
+    //   router.push("/login");
+    // }
     router.push("/login");
   }, [router]);
 

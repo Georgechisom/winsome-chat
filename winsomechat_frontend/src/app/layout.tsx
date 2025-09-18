@@ -4,6 +4,7 @@ import "./globals.css";
 import { Web3Provider } from "@/components/Web3Provider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ToastContainer } from "react-toastify";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
           <Navbar />
           <main className="flex-1 pt-14 md:pt-16">{children}</main>
           <Footer />
+          <ToastContainer />
         </Web3Provider>
       </body>
     </html>

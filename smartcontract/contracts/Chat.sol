@@ -37,43 +37,9 @@ contract WinsomeChat is Ownable {
     event GroupChatCreated(uint256 indexed groupChatId, string name);
     event MessageSent(uint256 indexed groupChatId, address indexed sender, string contentCid);
     event JoinedGroupChat(uint256 indexed groupChatId, address indexed user);
+    event PrivateMessageSent(address sender, address receiver, string message);
 
     constructor() Ownable(msg.sender) {}
-
-   
-    function privateGroupChat(address _otherUser) external returns (uint256) {
-        
-        address[2] memory users = [msg.sender, _otherUser];
-        if (msg.sender > _otherUser) {
-            users = [_otherUser, msg.sender];
-        }
-        bytes32 groupChatIdBytes = keccak256(abi.encodePacked(users[0], users[1]));
-        uint256 groupChatId = uint256(groupChatIdBytes);
-        GroupChat storage groupChat = groupChats[groupChatId];
-
-        
-        if (!groupChat.members[msg.sender]) {
-            
-            if (!registeredUsers[msg.sender]) {
-                registeredUsers[msg.sender] = true;
-                totalUsers++;
-            }
-            if (!registeredUsers[_otherUser]) {
-                registeredUsers[_otherUser] = true;
-                totalUsers++;
-            }
-            
-            groupChat.members[msg.sender] = true;
-            groupChat.members[_otherUser] = true;
-            groupChat.memberCount += 2;
-            userGroupChats[msg.sender].push(groupChatId);
-            userGroupChats[_otherUser].push(groupChatId);
-            totalGroupChats++;
-            emit JoinedGroupChat(groupChatId, msg.sender);
-            emit JoinedGroupChat(groupChatId, _otherUser);
-        }
-        return groupChatId;
-    }
 
    
     function createGroupChat(string memory _name) external returns (uint256) {
@@ -109,11 +75,26 @@ contract WinsomeChat is Ownable {
     }
 
    
-    function sendMessage(uint256 _groupChatId, string memory _contentCid) external {
+    function sendGroupMessage(uint256 _groupChatId, string memory _contentCid) external {
         GroupChat storage groupChat = groupChats[_groupChatId];
         require(groupChat.members[msg.sender], "Not a member");
         groupChat.messages.push(Message(msg.sender, block.timestamp, _contentCid));
         emit MessageSent(_groupChatId, msg.sender, _contentCid);
+    }
+
+    function sendPrivateMessage(address _otherUser, string memory _contentCid) external {
+        
+        address[2] memory users = [msg.sender, _otherUser];
+        totalUsers++;
+        if (msg.sender > _otherUser) {
+            users = [_otherUser, msg.sender];
+        }
+        bytes32 privateMessageIdBytes = keccak256(abi.encodePacked(users[0], users[1]));
+        uint256 privateMessageId = uint256(privateMessageIdBytes);
+        GroupChat storage groupChat = groupChats[privateMessageId];
+
+        groupChat.messages.push(Message(msg.sender, block.timestamp, _contentCid));
+        emit PrivateMessageSent(msg.sender, _otherUser, _contentCid);
     }
 
     
@@ -126,10 +107,11 @@ contract WinsomeChat is Ownable {
             msgs[i] = groupChat.messages[_start + i];
         }
         return msgs;
+
     }
 
     
-    function getTotalGroupChats(address _user) external view returns (GroupChatInfo[] memory) {
+    function getUserGroupChats(address _user) external view returns (GroupChatInfo[] memory) {
         uint256[] storage groupChatIds = userGroupChats[_user];
         GroupChatInfo[] memory groupChatInfos = new GroupChatInfo[](groupChatIds.length);
         for (uint256 i = 0; i < groupChatIds.length; i++) {
@@ -142,7 +124,7 @@ contract WinsomeChat is Ownable {
     }
 
     
-    function getTotalGroupChatCount(address _user) external view returns (uint256) {
+    function getTotalGroupChatsPerUser(address _user) external view returns (uint256) {
         return userGroupChats[_user].length;
     }
 

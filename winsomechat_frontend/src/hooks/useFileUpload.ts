@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   uploadToPinata,
   uploadJSONToPinata,
@@ -9,8 +9,9 @@ export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const uploadFile = async (file: File): Promise<string> => {
+  const uploadFile = useCallback(async (file: File): Promise<string> => {
     if (!file) {
       throw new Error("No file provided");
     }
@@ -20,14 +21,15 @@ export const useFileUpload = () => {
       throw new Error("Only image files are allowed");
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file size (max 2MB)
+    const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
       throw new Error("File size must be less than 5MB");
     }
 
     setIsUploading(true);
     setError(null);
+    setSuccessMessage(null);
     setUploadProgress(0);
 
     try {
@@ -40,6 +42,7 @@ export const useFileUpload = () => {
 
       clearInterval(progressInterval);
       setUploadProgress(100);
+      setSuccessMessage("File upload successful");
 
       return ipfsHash;
     } catch (err) {
@@ -48,11 +51,12 @@ export const useFileUpload = () => {
     } finally {
       setIsUploading(false);
     }
-  };
+  }, []);
 
-  const uploadJSON = async (data: any): Promise<string> => {
+  const uploadJSON = useCallback(async (data: any): Promise<string> => {
     setIsUploading(true);
     setError(null);
+    setSuccessMessage(null);
     setUploadProgress(0);
 
     try {
@@ -64,6 +68,7 @@ export const useFileUpload = () => {
 
       clearInterval(progressInterval);
       setUploadProgress(100);
+      setSuccessMessage("JSON upload successful");
 
       return ipfsHash;
     } catch (err) {
@@ -72,17 +77,18 @@ export const useFileUpload = () => {
     } finally {
       setIsUploading(false);
     }
-  };
+  }, []);
 
-  const getFileUrl = (ipfsHash: string): string => {
+  const getFileUrl = useCallback((ipfsHash: string): string => {
     return getPinataUrl(ipfsHash);
-  };
+  }, []);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setIsUploading(false);
     setUploadProgress(0);
     setError(null);
-  };
+    setSuccessMessage(null);
+  }, []);
 
   return {
     uploadFile,
@@ -91,6 +97,7 @@ export const useFileUpload = () => {
     isUploading,
     uploadProgress,
     error,
+    successMessage,
     reset,
   };
 };

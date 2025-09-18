@@ -1,5 +1,5 @@
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export const useWallet = () => {
   const { address, isConnected, isConnecting } = useAccount();
@@ -7,23 +7,23 @@ export const useWallet = () => {
   const { disconnect } = useDisconnect();
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
-  const connectWallet = () => {
+  const connectWallet = useCallback(() => {
     if (connectors.length > 0) {
       connect({ connector: connectors[0] });
     }
-  };
+  }, [connect, connectors]);
 
-  const disconnectWallet = () => {
+  const disconnectWallet = useCallback(() => {
     disconnect();
-  };
+  }, [disconnect]);
 
-  const openWalletModal = () => {
+  const openWalletModal = useCallback(() => {
     setIsWalletModalOpen(true);
-  };
+  }, []);
 
-  const closeWalletModal = () => {
+  const closeWalletModal = useCallback(() => {
     setIsWalletModalOpen(false);
-  };
+  }, []);
 
   return {
     address,

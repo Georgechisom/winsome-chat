@@ -1,41 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWallet } from "../../hooks/useWallet";
-import { useChat } from "../../hooks/useChat";
+import { useGroups } from "../../hooks/useGroups";
 
 export default function Groups() {
   const { address } = useWallet();
   const {
     createGroupChat,
     joinGroupChat,
-    getUserGroupChats,
+    fetchGroupChats,
+    chats,
     isCreatingGroup,
-  } = useChat();
+  } = useGroups();
 
   const [groups, setGroups] = useState<any[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newGroup, setNewGroup] = useState({ name: "", description: "" });
 
   // Load user's groups
-  React.useEffect(() => {
+  useEffect(() => {
     if (address) {
-      loadUserGroups();
+      fetchGroupChats();
     }
-  }, [address]);
+  }, [address, fetchGroupChats]);
 
-  const loadUserGroups = async () => {
-    try {
-      const userGroups = await getUserGroupChats(address);
-      setGroups(userGroups);
-    } catch (error) {
-      console.error("Error loading user groups:", error);
-    }
-  };
+  useEffect(() => {
+    setGroups(chats);
+  }, [chats]);
 
   const handleJoinLeave = async (groupId: bigint, isJoined: boolean) => {
     try {
@@ -45,7 +41,7 @@ export default function Groups() {
         // Leaving group functionality not implemented in contract
         console.warn("Leaving group not supported yet");
       }
-      loadUserGroups();
+      fetchGroupChats();
     } catch (error) {
       console.error("Error joining/leaving group:", error);
     }
@@ -57,7 +53,7 @@ export default function Groups() {
       await createGroupChat(newGroup.name);
       setNewGroup({ name: "", description: "" });
       setShowCreateForm(false);
-      loadUserGroups();
+      fetchGroupChats();
     } catch (error) {
       console.error("Error creating group:", error);
     }
@@ -97,7 +93,11 @@ export default function Groups() {
                   className="mt-1"
                 />
               </div>
-              <Button onClick={handleCreateGroup} className="w-full" disabled={isCreatingGroup}>
+              <Button
+                onClick={handleCreateGroup}
+                className="w-full"
+                disabled={isCreatingGroup}
+              >
                 {isCreatingGroup ? "Creating..." : "Create Group"}
               </Button>
             </CardContent>
@@ -117,13 +117,17 @@ export default function Groups() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-muted-foreground">{group.description ?? ""}</p>
+                <p className="text-muted-foreground">
+                  {group.description ?? ""}
+                </p>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
                     {group.members ?? 0} members
                   </span>
                   <Button
-                    onClick={() => handleJoinLeave(group.groupChatId, group.isJoined)}
+                    onClick={() =>
+                      handleJoinLeave(group.groupChatId, group.isJoined)
+                    }
                     variant={group.isJoined ? "outline" : "default"}
                     size="sm"
                   >
@@ -137,3 +141,4 @@ export default function Groups() {
       </div>
     </div>
   );
+}

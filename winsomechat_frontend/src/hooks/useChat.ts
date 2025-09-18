@@ -1,390 +1,263 @@
 import {
-  useReadContract,
+  useAccount,
   useWriteContract,
   useWaitForTransactionReceipt,
+  usePublicClient,
 } from "wagmi";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import chatABI from "../ABI/Chat_Abi.json";
+import userABI from "../ABI/UserProfiles_Abi.json";
+import { ProfileData } from "./useUserProfile";
 
-// Chat contract ABI
-const chatABI = [
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "_name",
-        type: "string",
-      },
-    ],
-    name: "createGroupChat",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_groupChatId",
-        type: "uint256",
-      },
-    ],
-    name: "joinGroupChat",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_groupChatId",
-        type: "uint256",
-      },
-      {
-        internalType: "string",
-        name: "_contentCid",
-        type: "string",
-      },
-    ],
-    name: "sendMessage",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_otherUser",
-        type: "address",
-      },
-    ],
-    name: "privateGroupChat",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_groupChatId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "_start",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "_count",
-        type: "uint256",
-      },
-    ],
-    name: "getMessages",
-    outputs: [
-      {
-        components: [
-          {
-            internalType: "address",
-            name: "sender",
-            type: "address",
-          },
-          {
-            internalType: "uint256",
-            name: "timestamp",
-            type: "uint256",
-          },
-          {
-            internalType: "string",
-            name: "contentCid",
-            type: "string",
-          },
-        ],
-        internalType: "struct WinsomeChat.Message[]",
-        name: "",
-        type: "tuple[]",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_user",
-        type: "address",
-      },
-    ],
-    name: "getTotalGroupChats",
-    outputs: [
-      {
-        components: [
-          {
-            internalType: "uint256",
-            name: "groupChatId",
-            type: "uint256",
-          },
-          {
-            internalType: "string",
-            name: "name",
-            type: "string",
-          },
-        ],
-        internalType: "struct WinsomeChat.GroupChatInfo[]",
-        name: "",
-        type: "tuple[]",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_groupChatId",
-        type: "uint256",
-      },
-    ],
-    name: "getGroupChatUserCount",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Contract address - should be set via environment variable
+// Contract addresses
 const CHAT_CONTRACT_ADDRESS = process.env
   .NEXT_PUBLIC_CHAT_CONTRACT_ADDRESS as `0x${string}`;
+const USER_CONTRACT_ADDRESS = process.env
+  .NEXT_PUBLIC_USER_PROFILE_CONTRACT_ADDRESS as `0x${string}`;
 
-export interface Message {
+export type GroupChatInfo = {
+  groupChatId: bigint;
+  name: string;
+};
+
+export type Message = {
   sender: `0x${string}`;
   timestamp: bigint;
   contentCid: string;
-}
-
-export interface GroupChatInfo {
-  groupChatId: bigint;
-  name: string;
-}
+};
 
 export const useChat = () => {
-  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
-  const [isJoiningGroup, setIsJoiningGroup] = useState(false);
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [isCreatingPrivateChat, setIsCreatingPrivateChat] = useState(false);
+  const { address } = useAccount();
+  const publicClient = usePublicClient();
+  const [chats, setChats] = useState<GroupChatInfo[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   // Write contract hooks
-  const { writeContract: writeCreateGroup, data: createGroupHash } =
-    useWriteContract();
-  const { writeContract: writeJoinGroup, data: joinGroupHash } =
-    useWriteContract();
-  const { writeContract: writeSendMessage, data: sendMessageHash } =
-    useWriteContract();
-  const { writeContract: writeCreatePrivate, data: createPrivateHash } =
-    useWriteContract();
+  const {
+    writeContract: writeSendPrivate,
+    data: sendPrivateHash,
+    status: sendPrivateStatus,
+    error: sendPrivateError,
+  } = useWriteContract();
 
   // Transaction receipt hooks
   const {
-    isLoading: isCreateGroupConfirming,
-    isSuccess: isCreateGroupSuccess,
+    isLoading: isSendPrivateConfirming,
+    isSuccess: isSendPrivateSuccess,
   } = useWaitForTransactionReceipt({
-    hash: createGroupHash,
+    hash: sendPrivateHash,
   });
 
-  const { isLoading: isJoinGroupConfirming, isSuccess: isJoinGroupSuccess } =
-    useWaitForTransactionReceipt({
-      hash: joinGroupHash,
-    });
-
-  const {
-    isLoading: isSendMessageConfirming,
-    isSuccess: isSendMessageSuccess,
-  } = useWaitForTransactionReceipt({
-    hash: sendMessageHash,
-  });
-
-  const {
-    isLoading: isCreatePrivateConfirming,
-    isSuccess: isCreatePrivateSuccess,
-  } = useWaitForTransactionReceipt({
-    hash: createPrivateHash,
-  });
-
-  const createGroupChat = async (name: string) => {
-    if (!CHAT_CONTRACT_ADDRESS) {
-      throw new Error("Chat contract address not configured");
-    }
-
-    setIsCreatingGroup(true);
-    try {
-      writeCreateGroup({
+  const sendPrivateMessage = useCallback(
+    (otherUser: `0x${string}`, messageContent: string) => {
+      if (!CHAT_CONTRACT_ADDRESS) {
+        setError(new Error("Chat contract address not configured"));
+        return;
+      }
+      writeSendPrivate({
         address: CHAT_CONTRACT_ADDRESS,
         abi: chatABI,
-        functionName: "createGroupChat",
-        args: [name],
+        functionName: "sendPrivateMessage",
+        args: [otherUser, messageContent],
       });
-    } catch (error) {
-      setIsCreatingGroup(false);
-      throw error;
-    }
-  };
+    },
+    [writeSendPrivate]
+  );
 
-  const joinGroupChat = async (groupChatId: bigint) => {
-    if (!CHAT_CONTRACT_ADDRESS) {
-      throw new Error("Chat contract address not configured");
-    }
+  const fetchMessages = useCallback(
+    async (groupChatId: bigint) => {
+      if (!publicClient || !CHAT_CONTRACT_ADDRESS) {
+        console.log("message contract address", CHAT_CONTRACT_ADDRESS);
+        console.log("message publicClient", publicClient);
+        return [];
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await publicClient.readContract({
+          address: CHAT_CONTRACT_ADDRESS,
+          abi: chatABI,
+          functionName: "getMessages",
+          args: [groupChatId, 0, 1000], // start=0, count=1000
+        });
 
-    setIsJoiningGroup(true);
+        const fetchedMessages = data as Message[];
+        console.log("Fetched messages:", fetchedMessages);
+        setMessages(fetchedMessages);
+        return fetchedMessages;
+      } catch (e) {
+        console.error("Error fetching messages:", e);
+        setError(e as Error);
+        return [];
+      } finally {
+        setLoading(false);
+      }
+    },
+    [publicClient]
+  );
+
+  const fetchPrivateChats = useCallback(async () => {
+    if (!address || !publicClient || !CHAT_CONTRACT_ADDRESS) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
     try {
-      writeJoinGroup({
+      const allChats = (await publicClient.readContract({
         address: CHAT_CONTRACT_ADDRESS,
         abi: chatABI,
-        functionName: "joinGroupChat",
-        args: [groupChatId],
-      });
-    } catch (error) {
-      setIsJoiningGroup(false);
-      throw error;
+        functionName: "getUserGroupChats",
+        args: [address],
+      })) as GroupChatInfo[];
+
+      console.log("All user chats:", allChats);
+
+      // Filter for private chats (userCount == 2) OR chats with messages but no explicit members
+      const privateChats: GroupChatInfo[] = [];
+
+      for (const chat of allChats) {
+        try {
+          // First check member count
+          const count = (await publicClient.readContract({
+            address: CHAT_CONTRACT_ADDRESS,
+            abi: chatABI,
+            functionName: "getGroupChatUserCount",
+            args: [chat.groupChatId],
+          })) as bigint;
+
+          console.log(
+            `Chat ${chat.groupChatId} has ${count.toString()} members`
+          );
+
+          if (count === BigInt(2)) {
+            privateChats.push(chat);
+          } else {
+            // For private message chats, check if messages exist
+            const messages = (await publicClient.readContract({
+              address: CHAT_CONTRACT_ADDRESS,
+              abi: chatABI,
+              functionName: "getMessages",
+              args: [chat.groupChatId, 0, 1], // Get first message to check if any exist
+            })) as Message[];
+
+            if (messages.length > 0) {
+              console.log(
+                `Chat ${chat.groupChatId} has messages, treating as private chat`
+              );
+              privateChats.push(chat);
+            }
+          }
+        } catch (chatError) {
+          console.error(`Error checking chat ${chat.groupChatId}:`, chatError);
+        }
+      }
+
+      console.log("Private chats found:", privateChats);
+      setChats(privateChats);
+    } catch (e) {
+      console.error("Error fetching private chats:", e);
+      setError(e as Error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [address, publicClient]);
 
-  const sendMessage = async (groupChatId: bigint, contentCid: string) => {
-    if (!CHAT_CONTRACT_ADDRESS) {
-      throw new Error("Chat contract address not configured");
-    }
+  // FIXED: Proper implementation of fetchChatMembers
+  const fetchChatMembers = useCallback(
+    async (groupChatId: bigint): Promise<`0x${string}`[]> => {
+      if (!publicClient || !CHAT_CONTRACT_ADDRESS) return [];
+      try {
+        const data = await publicClient.readContract({
+          address: CHAT_CONTRACT_ADDRESS,
+          abi: chatABI,
+          functionName: "getGroupChatMembers",
+          args: [groupChatId],
+        });
+        const members = data as `0x${string}`[];
+        console.log(`Members for chat ${groupChatId}:`, members);
+        return members;
+      } catch (e) {
+        console.error("Error fetching chat members:", e);
+        // Fallback: Try to get members from messages if direct member query fails
+        try {
+          const messages = (await publicClient.readContract({
+            address: CHAT_CONTRACT_ADDRESS,
+            abi: chatABI,
+            functionName: "getMessages",
+            args: [groupChatId, 0, 1000],
+          })) as Message[];
 
-    setIsSendingMessage(true);
-    try {
-      writeSendMessage({
-        address: CHAT_CONTRACT_ADDRESS,
-        abi: chatABI,
-        functionName: "sendMessage",
-        args: [groupChatId, contentCid],
-      });
-    } catch (error) {
-      setIsSendingMessage(false);
-      throw error;
-    }
-  };
+          // Extract unique senders as members
+          const uniqueSenders = [...new Set(messages.map((msg) => msg.sender))];
+          console.log(
+            `Fallback members from messages for chat ${groupChatId}:`,
+            uniqueSenders
+          );
+          return uniqueSenders;
+        } catch (fallbackError) {
+          console.error("Fallback member fetch also failed:", fallbackError);
+          return [];
+        }
+      }
+    },
+    [publicClient]
+  );
 
-  const createPrivateChat = async (otherUser: `0x${string}`) => {
-    if (!CHAT_CONTRACT_ADDRESS) {
-      throw new Error("Chat contract address not configured");
-    }
+  const searchUser = useCallback(
+    async (userAddress: `0x${string}`): Promise<ProfileData | null> => {
+      if (!publicClient || !USER_CONTRACT_ADDRESS) {
+        console.log("contract address", USER_CONTRACT_ADDRESS);
+        console.log("publicClient", publicClient);
+        return null;
+      }
+      try {
+        const data = (await publicClient.readContract({
+          address: USER_CONTRACT_ADDRESS,
+          abi: userABI,
+          functionName: "getProfileByAddress",
+          args: [userAddress],
+        })) as ProfileData;
 
-    setIsCreatingPrivateChat(true);
-    try {
-      writeCreatePrivate({
-        address: CHAT_CONTRACT_ADDRESS,
-        abi: chatABI,
-        functionName: "privateGroupChat",
-        args: [otherUser],
-      });
-    } catch (error) {
-      setIsCreatingPrivateChat(false);
-      throw error;
-    }
-  };
+        if (!data.isRegistered) {
+          console.log(`User ${userAddress} is not registered`);
+          return null;
+        }
 
-  const getMessages = async (
-    groupChatId: bigint,
-    start: bigint = BigInt(0),
-    count: bigint = BigInt(10)
-  ) => {
-    if (!CHAT_CONTRACT_ADDRESS) {
-      throw new Error("Chat contract address not configured");
-    }
-
-    const { data } = await useReadContract({
-      address: CHAT_CONTRACT_ADDRESS,
-      abi: chatABI,
-      functionName: "getMessages",
-      args: [groupChatId, start, count],
-    });
-
-    return data as Message[];
-  };
-
-  const getUserGroupChats = async (userAddress: `0x${string}`) => {
-    if (!CHAT_CONTRACT_ADDRESS) {
-      throw new Error("Chat contract address not configured");
-    }
-
-    const { data } = await useReadContract({
-      address: CHAT_CONTRACT_ADDRESS,
-      abi: chatABI,
-      functionName: "getTotalGroupChats",
-      args: [userAddress],
-    });
-
-    return data as GroupChatInfo[];
-  };
-
-  const getGroupChatUserCount = async (groupChatId: bigint) => {
-    if (!CHAT_CONTRACT_ADDRESS) {
-      throw new Error("Chat contract address not configured");
-    }
-
-    const { data } = await useReadContract({
-      address: CHAT_CONTRACT_ADDRESS,
-      abi: chatABI,
-      functionName: "getGroupChatUserCount",
-      args: [groupChatId],
-    });
-
-    return data as bigint;
-  };
+        const profile: ProfileData = {
+          username: data.username,
+          ipfsCid: data.ipfsCid,
+          isRegistered: data.isRegistered,
+          address: userAddress,
+        };
+        return profile;
+      } catch (e) {
+        console.error(`Failed to search user ${userAddress}:`, e);
+        return null;
+      }
+    },
+    [publicClient]
+  );
 
   return {
-    // Group creation
-    createGroupChat,
-    isCreatingGroup,
-    isCreateGroupConfirming,
-    isCreateGroupSuccess,
-
-    // Group joining
-    joinGroupChat,
-    isJoiningGroup,
-    isJoinGroupConfirming,
-    isJoinGroupSuccess,
-
-    // Messaging
-    sendMessage,
-    isSendingMessage,
-    isSendMessageConfirming,
-    isSendMessageSuccess,
-
-    // Private chat
-    createPrivateChat,
-    isCreatingPrivateChat,
-    isCreatePrivateConfirming,
-    isCreatePrivateSuccess,
+    // Private messaging
+    sendPrivateMessage,
+    isSendingPrivateMessage:
+      sendPrivateStatus === "pending" || isSendPrivateConfirming,
+    isSendPrivateSuccess,
+    sendPrivateError,
 
     // Read functions
-    getMessages,
-    getUserGroupChats,
-    getGroupChatUserCount,
+    fetchMessages,
+    fetchPrivateChats,
+    fetchChatMembers,
+    searchUser,
+
+    // State
+    chats,
+    messages,
+    loading,
+    error,
   };
 };
