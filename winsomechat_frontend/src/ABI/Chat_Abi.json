@@ -1,27 +1,23 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
-      }
-    ],
-    "name": "createGroupChat",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "CannotLeaveLastMember",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "GroupDoesNotExist",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotMember",
+    "type": "error"
   },
   {
     "inputs": [
@@ -82,19 +78,6 @@
     ],
     "name": "JoinedGroupChat",
     "type": "event"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_groupChatId",
-        "type": "uint256"
-      }
-    ],
-    "name": "joinGroupChat",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
   },
   {
     "anonymous": false,
@@ -166,59 +149,47 @@
     "type": "event"
   },
   {
-    "inputs": [],
-    "name": "renounceOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [
+      {
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
+      }
+    ],
+    "name": "createGroupChat",
+    "outputs": [
       {
         "internalType": "uint256",
-        "name": "_groupChatId",
+        "name": "",
         "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "_contentCid",
-        "type": "string"
       }
     ],
-    "name": "sendGroupMessage",
-    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "getAllGroupChats",
+    "outputs": [
       {
-        "internalType": "address",
-        "name": "_otherUser",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "_contentCid",
-        "type": "string"
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "groupChatId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct WinsomeChat.GroupChatInfo[]",
+        "name": "",
+        "type": "tuple[]"
       }
     ],
-    "name": "sendPrivateMessage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -387,6 +358,32 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_groupChatId",
+        "type": "uint256"
+      }
+    ],
+    "name": "joinGroupChat",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_groupChatId",
+        "type": "uint256"
+      }
+    ],
+    "name": "leaveGroupChat",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "nextGroupChatId",
     "outputs": [
@@ -414,6 +411,49 @@
   },
   {
     "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_groupChatId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_contentCid",
+        "type": "string"
+      }
+    ],
+    "name": "sendGroupMessage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_otherUser",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "_contentCid",
+        "type": "string"
+      }
+    ],
+    "name": "sendPrivateMessage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "totalGroupChats",
     "outputs": [
       {
@@ -436,6 +476,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

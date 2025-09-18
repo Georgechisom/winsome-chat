@@ -114,45 +114,66 @@ export const useUserProfile = () => {
     try {
       console.log("Fetching all users...");
 
-      // Try to get all users and their addresses
+      // Get all users
       const usersResult = await publicClient.readContract({
         address: USER_PROFILE_CONTRACT_ADDRESS,
         abi: userProfileABI,
         functionName: "getAllUsers",
       });
 
-      // const addressesResult = await publicClient.readContract({
-      //   address: USER_PROFILE_CONTRACT_ADDRESS,
-      //   abi: userProfileABI,
-      //   functionName: "getAllUserAddresses",
-      // });
-
       const users = usersResult as ProfileData[];
-      // const addresses = addressesResult as string[];
-
       console.log("Raw users data:", users);
-      // console.log("Raw addresses data:", addresses);
 
-      if (users && users.length) {
-        const combinedUsers = users.map((user) => ({
+      // Get total users to fetch addresses
+      const totalUsersResult = await publicClient.readContract({
+        address: USER_PROFILE_CONTRACT_ADDRESS,
+        abi: userProfileABI,
+        functionName: "getTotalUsers",
+      });
+
+      const totalUsers = Number(totalUsersResult);
+      console.log("Total users:", totalUsers);
+
+      // Fetch addresses
+      const addresses: string[] = [];
+      for (let i = 0; i < totalUsers; i++) {
+        const addrResult = await publicClient.readContract({
+          address: USER_PROFILE_CONTRACT_ADDRESS,
+          abi: userProfileABI,
+          functionName: "userAddresses",
+          args: [BigInt(i)],
+        });
+        addresses.push(addrResult as string);
+      }
+
+      console.log("Addresses:", addresses);
+
+      if (users && users.length === addresses.length) {
+        const combinedUsers = users.map((user, index) => ({
           ...user,
-          address: user.address || `unknown-${user.username}`,
+          address: addresses[index],
         }));
 
-        console.log("Combined users:", combinedUsers);
-        setAllUsers(combinedUsers);
-        return combinedUsers;
+        // Deduplicate by address
+        const uniqueUsers = combinedUsers.filter(
+          (user, index, self) =>
+            index === self.findIndex((u) => u.address === user.address)
+        );
+
+        console.log("Combined unique users:", uniqueUsers);
+        setAllUsers(uniqueUsers);
+        return uniqueUsers;
       } else {
-        console.warn("Users and addresses length mismatch or data missing", {
+        console.warn("Users and addresses length mismatch", {
           usersLength: users?.length,
-          // addressesLength: addresses?.length,
+          addressesLength: addresses.length,
         });
 
-        // Fallback: return users without addresses if available
+        // Fallback
         const fallbackUsers =
           users?.map((user) => ({
             ...user,
-            address: user.address || `unknown-${user.username}`,
+            address: `unknown-${user.username}`,
           })) || [];
 
         setAllUsers(fallbackUsers);

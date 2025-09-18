@@ -39,6 +39,10 @@ contract WinsomeChat is Ownable {
     event JoinedGroupChat(uint256 indexed groupChatId, address indexed user);
     event PrivateMessageSent(address sender, address receiver, string message);
 
+    error NotMember();
+    error CannotLeaveLastMember();
+    error GroupDoesNotExist();
+
     constructor() Ownable(msg.sender) {}
 
    
@@ -61,7 +65,9 @@ contract WinsomeChat is Ownable {
    
     function joinGroupChat(uint256 _groupChatId) external {
         GroupChat storage groupChat = groupChats[_groupChatId];
-        require(groupChat.messages.length > 0 || bytes(groupChat.name).length > 0, "Group chat does not exist");
+        if (groupChat.messages.length == 0 && bytes(groupChat.name).length == 0) {
+            revert GroupDoesNotExist();
+        }
         if (!registeredUsers[msg.sender]) {
             registeredUsers[msg.sender] = true;
             totalUsers++;
@@ -77,7 +83,9 @@ contract WinsomeChat is Ownable {
    
     function sendGroupMessage(uint256 _groupChatId, string memory _contentCid) external {
         GroupChat storage groupChat = groupChats[_groupChatId];
-        require(groupChat.members[msg.sender], "Not a member");
+        if (!groupChat.members[msg.sender]) {
+            revert NotMember();
+        }
         groupChat.messages.push(Message(msg.sender, block.timestamp, _contentCid));
         emit MessageSent(_groupChatId, msg.sender, _contentCid);
     }
@@ -141,5 +149,51 @@ contract WinsomeChat is Ownable {
     
     function getTotalGroupChatsInSystem() external view returns (uint256) {
         return totalGroupChats;
+    }
+
+
+    function leaveGroupChat(uint256 _groupChatId) external {
+        GroupChat storage groupChat = groupChats[_groupChatId];
+        if (!groupChat.members[msg.sender]) {
+            revert NotMember();
+        }
+        if (groupChat.memberCount <= 1) {
+            revert CannotLeaveLastMember();
+        }
+        
+        groupChat.members[msg.sender] = false;
+        groupChat.memberCount--;
+        
+        // Remove from user's group chats list
+        uint256[] storage userChats = userGroupChats[msg.sender];
+        for (uint256 i = 0; i < userChats.length; i++) {
+            if (userChats[i] == _groupChatId) {
+                userChats[i] = userChats[userChats.length - 1];
+                userChats.pop();
+                break;
+            }
+        }
+        
+        emit JoinedGroupChat(_groupChatId, msg.sender); // Reuse event for leaving
+    }
+
+    function getAllGroupChats() external view returns (GroupChatInfo[] memory) {
+        GroupChatInfo[] memory allGroupChats = new GroupChatInfo[](totalGroupChats);
+        uint256 index = 0;
+        for (uint256 i = 1; i < nextGroupChatId; i++) {
+            if (bytes(groupChats[i].name).length > 0) {
+                allGroupChats[index] = GroupChatInfo({
+                    groupChatId: i,
+                    name: groupChats[i].name
+                });
+                index++;
+            }
+        }
+        // Resize array to actual count
+        GroupChatInfo[] memory result = new GroupChatInfo[](index);
+        for (uint256 j = 0; j < index; j++) {
+            result[j] = allGroupChats[j];
+        }
+        return result;
     }
 }

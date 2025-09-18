@@ -3,7 +3,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import chatABI from "../ABI/Chat_Abi.json";
 import {
   getMessages,
@@ -11,6 +11,9 @@ import {
   getGroupChatUserCount,
   Message,
   GroupChatInfo,
+  getTotalGroupChatsPerUser,
+  getAllGroupChats,
+  leaveGroupChat as leaveGroupChatUtil,
 } from "../lib/chatMessaging";
 
 // Contract address - should be set via environment variable
@@ -22,7 +25,13 @@ export type { Message, GroupChatInfo };
 export const useGroups = () => {
   const { address } = useAccount();
   const [chats, setChats] = useState<GroupChatInfo[]>([]);
+  const [allGroups, setAllGroups] = useState<GroupChatInfo[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<GroupChatInfo | null>(
+    null
+  );
+  const [selectedGroupMemberCount, setSelectedGroupMemberCount] =
+    useState<bigint>(BigInt(0));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -45,6 +54,12 @@ export const useGroups = () => {
     status: sendMessageStatus,
     error: sendMessageError,
   } = useWriteContract();
+  const {
+    writeContract: writeLeaveGroup,
+    data: leaveGroupHash,
+    status: leaveGroupStatus,
+    error: leaveGroupError,
+  } = useWriteContract();
 
   // Transaction receipt hooks
   const {
@@ -65,6 +80,11 @@ export const useGroups = () => {
   } = useWaitForTransactionReceipt({
     hash: sendMessageHash,
   });
+
+  const { isLoading: isLeaveGroupConfirming, isSuccess: isLeaveGroupSuccess } =
+    useWaitForTransactionReceipt({
+      hash: leaveGroupHash,
+    });
 
   const createGroupChat = useCallback(
     (name: string) => {
@@ -105,11 +125,27 @@ export const useGroups = () => {
       writeSendMessage({
         address: CHAT_CONTRACT_ADDRESS,
         abi: chatABI,
-        functionName: "sendMessage",
+        functionName: "sendGroupMessage",
         args: [groupChatId, contentCid],
       });
     },
     [writeSendMessage]
+  );
+
+  const leaveGroupChat = useCallback(
+    (groupChatId: bigint) => {
+      if (!CHAT_CONTRACT_ADDRESS) {
+        setError(new Error("Chat contract address not configured"));
+        return;
+      }
+      writeLeaveGroup({
+        address: CHAT_CONTRACT_ADDRESS,
+        abi: chatABI,
+        functionName: "leaveGroupChat",
+        args: [groupChatId],
+      });
+    },
+    [writeLeaveGroup]
   );
 
   const fetchMessages = useCallback(async (groupChatId: bigint) => {
@@ -125,6 +161,15 @@ export const useGroups = () => {
     }
   }, []);
 
+  const fetchGroupMemberCount = useCallback(async (groupChatId: bigint) => {
+    try {
+      const count = await getGroupChatUserCount(groupChatId);
+      setSelectedGroupMemberCount(count);
+    } catch (e) {
+      setError(e as Error);
+    }
+  }, []);
+
   const fetchGroupChats = useCallback(async () => {
     if (!address) {
       return;
@@ -132,16 +177,8 @@ export const useGroups = () => {
     setLoading(true);
     setError(null);
     try {
-      const allChats = await getGroupChats(address);
-      // Filter for group chats (userCount > 2)
-      const groupChats: GroupChatInfo[] = [];
-      for (const chat of allChats) {
-        const count = await getGroupChatUserCount(chat.groupChatId);
-        if (count > BigInt(2)) {
-          groupChats.push(chat);
-        }
-      }
-      setChats(groupChats);
+      const userGroups = await getGroupChats(address);
+      setChats(userGroups);
     } catch (e) {
       setError(e as Error);
     } finally {
@@ -149,8 +186,17 @@ export const useGroups = () => {
     }
   }, [address]);
 
-  const getGroupChatUserCount = useCallback(async (groupChatId: bigint) => {
-    return await getGroupChatUserCount(groupChatId);
+  const fetchAllGroups = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const allGroupsData = await getAllGroupChats();
+      setAllGroups(allGroupsData);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   return {
@@ -166,6 +212,12 @@ export const useGroups = () => {
     isJoinGroupSuccess,
     joinGroupError,
 
+    // Group leaving
+    leaveGroupChat,
+    isLeavingGroup: leaveGroupStatus === "pending" || isLeaveGroupConfirming,
+    isLeaveGroupSuccess,
+    leaveGroupError,
+
     // Messaging
     sendMessage,
     isSendingMessage:
@@ -176,11 +228,16 @@ export const useGroups = () => {
     // Read functions
     fetchMessages,
     fetchGroupChats,
-    getGroupChatUserCount,
+    fetchAllGroups,
+    fetchGroupMemberCount,
 
     // State
     chats,
+    allGroups,
     messages,
+    selectedGroup,
+    setSelectedGroup,
+    selectedGroupMemberCount,
     loading,
     error,
   };

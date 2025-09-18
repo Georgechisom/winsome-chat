@@ -36,13 +36,21 @@ export type ProfileData = {
 
 export const getMessages = async (groupChatId: bigint): Promise<Message[]> => {
   if (!publicClient || !CHAT_CONTRACT_ADDRESS) return [];
-  const data = await publicClient.readContract({
+  const data = (await publicClient.readContract({
     address: CHAT_CONTRACT_ADDRESS,
     abi: chatABI,
     functionName: "getMessages",
     args: [groupChatId, 0, 1000],
-  });
-  return data as Message[];
+  })) as Array<{
+    sender: `0x${string}`;
+    timestamp: bigint;
+    contentCid: string;
+  }>;
+  return data.map((msg: any) => ({
+    sender: msg.sender,
+    timestamp: msg.timestamp,
+    content: msg.contentCid, // Map contentCid to content
+  })) as Message[];
 };
 
 export const getGroupChats = async (
@@ -58,6 +66,24 @@ export const getGroupChats = async (
   return data as GroupChatInfo[];
 };
 
+export const getAllGroupChats = async (): Promise<GroupChatInfo[]> => {
+  if (!publicClient || !CHAT_CONTRACT_ADDRESS) return [];
+  const data = await publicClient.readContract({
+    address: CHAT_CONTRACT_ADDRESS,
+    abi: chatABI,
+    functionName: "getAllGroupChats",
+    args: [],
+  });
+  return data as GroupChatInfo[];
+};
+
+export const leaveGroupChat = async (groupChatId: bigint): Promise<void> => {
+  if (!publicClient || !CHAT_CONTRACT_ADDRESS) return;
+  const wallet = null; // This should be replaced with actual wallet signer if needed
+  // Leaving group is a transaction, so it requires a signer and write contract call
+  // This function is a placeholder; actual implementation depends on wallet integration
+};
+
 export const getGroupChatUserCount = async (
   groupChatId: bigint
 ): Promise<bigint> => {
@@ -67,6 +93,19 @@ export const getGroupChatUserCount = async (
     abi: chatABI,
     functionName: "getGroupChatUserCount",
     args: [groupChatId],
+  });
+  return data as bigint;
+};
+
+export const getTotalGroupChatsPerUser = async (
+  user: `0x${string}`
+): Promise<bigint> => {
+  if (!publicClient || !CHAT_CONTRACT_ADDRESS) return BigInt(0);
+  const data = await publicClient.readContract({
+    address: CHAT_CONTRACT_ADDRESS,
+    abi: chatABI,
+    functionName: "getTotalGroupChatsPerUser",
+    args: [user],
   });
   return data as bigint;
 };

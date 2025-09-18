@@ -83,13 +83,20 @@ export default function Chats() {
 
   // FIXED: Filter users based on search query and exclude current user
   useEffect(() => {
-    console.log("Filtering users...", { allUsers, address });
+    console.log("Filtering users...", {
+      allUsersLength: allUsers?.length,
+      address,
+    });
 
     if (allUsers && address) {
       const filtered = allUsers
         .filter((user) => {
           // Exclude current user
-          if (user.address.toLowerCase() === address.toLowerCase()) {
+          if (
+            user.address &&
+            user.address.toLowerCase() === address.toLowerCase()
+          ) {
+            console.log("Excluding current user:", user.address);
             return false;
           }
           // Only include registered users
@@ -105,11 +112,11 @@ export default function Chats() {
             user.username
               ?.toLowerCase()
               .includes(userSearchQuery.toLowerCase()) ||
-            user.address.toLowerCase().includes(userSearchQuery.toLowerCase())
+            user.address?.toLowerCase().includes(userSearchQuery.toLowerCase())
           );
         });
 
-      console.log("Filtered users:", filtered);
+      console.log("Filtered users count:", filtered.length);
       setFilteredUsers(filtered);
     } else {
       setFilteredUsers([]);
@@ -184,33 +191,6 @@ export default function Chats() {
     }
   };
 
-  const handleUserPick = async (user: ProfileData & { address: string }) => {
-    if (!user.address || !address) {
-      toast.error("Invalid user selection");
-      return;
-    }
-
-    console.log(`Starting private chat with ${user.address}`);
-
-    // Calculate the private chat ID using the deterministic function
-    const chatId = getPrivateChatId(
-      address as Address,
-      user.address as Address
-    );
-
-    console.log(`Generated chat ID: ${chatId}`);
-
-    setActiveChat({ chatId, otherUser: user });
-
-    // Fetch messages for this chat
-    try {
-      const fetchedMessages = await fetchMessages(chatId);
-      console.log(`Messages for chat ${chatId}:`, fetchedMessages);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!activeChat || !newMessage.trim() || !address) {
       console.log("Cannot send message - missing requirements");
@@ -236,11 +216,11 @@ export default function Chats() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 flex">
+    <div className="min-h-screen bg-background p-4 flex flex-col lg:flex-row">
       {/* Aside */}
-      <aside className="w-1/4 border-r border-border p-4 flex flex-col">
+      <aside className="w-full lg:w-1/8 border-r border-border p-4 lg:flex flex-col hidden">
         <div className="mb-4 flex-row">
-          <div onClick={() => handleUserPick} className="cursor-pointer">
+          <div className="cursor-pointer">
             {currentProfile?.ipfsCid ? (
               <img
                 src={getPinataUrl(currentProfile.ipfsCid)}
@@ -258,7 +238,7 @@ export default function Chats() {
           </h2>
         </div>
 
-        <div className="flex space-x-2 mb-4">
+        <div className="flex space-x-2 mb-4 my-5">
           <Button variant="default" onClick={() => setActiveTab("chats")}>
             Chats
           </Button>
@@ -274,14 +254,14 @@ export default function Chats() {
           <div className="my-2 font-bold text-lg">All Users</div>
 
           {/* Search input for filtering users */}
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <Input
               placeholder="Search users..."
               value={userSearchQuery}
               onChange={(e) => setUserSearchQuery(e.target.value)}
               className="text-sm"
             />
-          </div>
+          </div> */}
 
           {isLoadingAllUsers ? (
             <div className="text-center text-muted-foreground py-4">
@@ -332,11 +312,105 @@ export default function Chats() {
           )}
         </div>
       </aside>
+      <div className="shadow-md shadow-amber-900 rounded-2xl my-10 p-4 flex flex-col lg:hidden">
+        <div className="mb-4 flex-row">
+          <div className="cursor-pointer">
+            {currentProfile?.ipfsCid ? (
+              <img
+                src={getPinataUrl(currentProfile.ipfsCid)}
+                alt={`${currentProfile.username} profile photo`}
+                className="w-16 h-16 rounded-full mx-auto mb-4 object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-xl mx-auto mb-4">
+                {currentProfile?.username?.charAt(0).toUpperCase() || "N"}
+              </div>
+            )}
+          </div>
+          <h2 className="text-xl font-semibold">
+            {currentProfile?.username || "No profile loaded"}
+          </h2>
+        </div>
+
+        <div className="flex space-x-2 mb-4 my-5">
+          <Button variant="default" onClick={() => setActiveTab("chats")}>
+            Chats
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => (window.location.href = "/groups")}
+          >
+            Groups
+          </Button>
+        </div>
+
+        <div className="overflow-y-auto flex-col mt-5">
+          <div className="my-2 font-bold text-lg">All Users</div>
+
+          {/* Search input for filtering users */}
+          {/* <div className="mb-4">
+            <Input
+              placeholder="Search users..."
+              value={userSearchQuery}
+              onChange={(e) => setUserSearchQuery(e.target.value)}
+              className="text-sm"
+            />
+          </div> */}
+
+          {isLoadingAllUsers ? (
+            <div className="text-center text-muted-foreground py-4">
+              Loading users...
+            </div>
+          ) : filteredUsers.length > 0 ? (
+            filteredUsers.map((user) => (
+              <Card
+                key={user.address}
+                className={`cursor-pointer p-3 mb-2 ${
+                  activeChat?.otherUser.address === user.address
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card hover:bg-muted"
+                } transition-colors`}
+                onClick={() => handleUserSelect(user)}
+              >
+                <div className="flex items-center space-x-3">
+                  {user.ipfsCid ? (
+                    <img
+                      src={getPinataUrl(user.ipfsCid)}
+                      alt={`${user.username} profile`}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center text-secondary-foreground font-bold text-sm">
+                      {user.username?.charAt(0).toUpperCase() || "?"}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">
+                      {user.username || "Unknown User"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user.address.slice(0, 6)}...{user.address.slice(-4)}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {userSearchQuery.trim()
+                ? "No users found matching your search."
+                : allUsers && allUsers.length === 0
+                ? "No registered users found."
+                : "Loading users..."}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Main chat area */}
-      <main className="flex flex-col md:flex-row p-4 gap-y-10 md:gap-x-10">
+      <main className="flex flex-col lg:flex-row p-4 gap-y-10 md:gap-x-10">
         {/* Quick search card */}
-        <Card className="h-86 mb-4 p-4 w-[600px]">
+        <Card className="h-86 mb-4 p-4 w-full lg:w-[600px]">
           <CardTitle className="mb-4">Quick Search</CardTitle>
           <p className="text-sm text-muted-foreground mb-3">
             Need to find a specific user quickly? Search by address here:
@@ -396,13 +470,18 @@ export default function Chats() {
 
         {/* Chat card */}
         {activeChat ? (
-          <Card className="flex flex-col h-[700px] w-[500px] shadow-md shadow-amber-700 border-amber-700">
+          <Card className="flex flex-col lg:h-[700px] lg:w-[500px] h-full shadow-md shadow-amber-700 border-amber-700">
             <CardHeader className="border-b-2 border-amber-700 py-4">
               <CardTitle>
-                {activeChat.otherUser.username || activeChat.otherUser.address}
+                {activeChat.otherUser.username ||
+                  `${activeChat.otherUser.address.slice(
+                    0,
+                    6
+                  )}...${activeChat.otherUser.address.slice(-4)}`}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {activeChat.otherUser.address}
+                ${activeChat.otherUser.address.slice(0, 6)}...$
+                {activeChat.otherUser.address.slice(-4)}
               </p>
             </CardHeader>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -467,7 +546,7 @@ export default function Chats() {
             </div>
           </Card>
         ) : (
-          <div className="shadow-md shadow-amber-700 p-8 w-[500px] h-[200px] flex items-center justify-center text-center rounded-lg">
+          <div className="shadow-md shadow-amber-700 p-8 w-full lg:w-[500px] lg:h-[200px] flex items-center justify-center text-center rounded-lg">
             <div>
               <h3 className="text-lg font-semibold mb-2">No Chat Selected</h3>
               <p className="text-muted-foreground">
