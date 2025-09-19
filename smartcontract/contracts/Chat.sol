@@ -43,6 +43,14 @@ contract WinsomeChat is Ownable {
     error CannotLeaveLastMember();
     error GroupDoesNotExist();
 
+    address public priceAutomation;
+
+     
+    modifier onlyPriceAutomation() {
+        require(msg.sender == priceAutomation, "Only price automation");
+        _;
+    }
+
     constructor() Ownable(msg.sender) {}
 
    
@@ -195,5 +203,28 @@ contract WinsomeChat is Ownable {
             result[j] = allGroupChats[j];
         }
         return result;
+    }
+
+    function setPriceOracle(address _automation) external onlyOwner {
+        priceAutomation = _automation;
+    }
+
+    // Add this function for the automation to send messages
+    function sendPriceMessage(uint256 roomId, string calldata message)
+        external
+        onlyPriceAutomation
+    {
+        GroupChat storage groupChat = groupChats[roomId];
+        if (bytes(groupChat.name).length == 0) {
+            revert GroupDoesNotExist();
+        }
+
+        groupChat.messages.push(Message({
+            sender: address(0), // System message
+            timestamp: block.timestamp,
+            contentCid: message
+        }));
+
+        emit MessageSent(roomId, address(0), message);
     }
 }

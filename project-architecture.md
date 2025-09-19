@@ -34,7 +34,6 @@
 ├── ENS Registry (Ethereum Mainnet/Testnet)
 | └── For human-readable names (.eth domains)
 |
-└── Backend/Indexer (Node.js/Express, optional for P2P avoidance)
 ├── Event Listener: Watch Smart Contract events for new messages
 └── Database: IPFS CIDs or OrbitDB for P2P storage (if fully decentralized)
 
@@ -45,3 +44,12 @@
 3. Dashboard: Query ProfileContract.getProfile(address) → Fetch from IPFS → Display.
 4. Chat: User selects peer/group → Compose message → Encrypt (optional, e.g., via libsodium) → Upload to IPFS → Call ChatContract.sendMessage(roomId, CID, timestamp).
 5. All users query ChatContract or events → Fetch messages from IPFS → Decrypt if needed.
+
+_Assignment_
+Fetch data price using chainlink
+Send it as a message to the group chat after a time frame and let it display the following
+
+1. BTC/USD
+2. ETH/USD
+3. BTC/ETH
+4. BNB/ETH
