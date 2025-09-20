@@ -1,4 +1,7 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const features = [
   {
@@ -41,7 +44,7 @@ const team = [
   },
 ];
 
-export default function About() {
+function AboutContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -156,5 +159,13 @@ export default function About() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function About() {
+  return (
+    <AuthGuard>
+      <AboutContent />
+    </AuthGuard>
   );
 }

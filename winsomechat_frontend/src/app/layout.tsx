@@ -5,6 +5,7 @@ import { Web3Provider } from "@/components/Web3Provider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToastContainer } from "react-toastify";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,6 +23,16 @@ export const metadata: Metadata = {
     "Secure private and group conversations in a decentralized world.",
 };
 
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <Navbar />
+      <main className="flex-1 pt-14 md:pt-16">{children}</main>
+      <Footer />
+    </>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,9 +44,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen flex flex-col`}
       >
         <Web3Provider>
-          <Navbar />
-          <main className="flex-1 pt-14 md:pt-16">{children}</main>
-          <Footer />
+          <AuthGuard>
+            <AuthenticatedLayout>{children}</AuthenticatedLayout>
+          </AuthGuard>
           <ToastContainer />
         </Web3Provider>
       </body>

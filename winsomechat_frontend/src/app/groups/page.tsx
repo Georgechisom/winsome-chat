@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { useWallet } from "../../hooks/useWallet";
 import { useGroups } from "../../hooks/useGroups";
 import { getProfileByAddress } from "../../lib/chatMessaging";
+import { AuthGuard } from "@/components/AuthGuard";
 
-export default function Groups() {
+function GroupsContent() {
   const { address } = useWallet();
   const {
     createGroupChat,
@@ -205,55 +206,60 @@ export default function Groups() {
           </Card>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-4rem)]">
-          {/* Aside Top */}
-          <div className="lg:w-1/4 flex-shrink-0">
-            <h2 className="text-2xl font-semibold text-foreground mb-4">
-              Groups You Are In
-            </h2>
-            <div className="overflow-y-auto max-h-[calc(100vh-6rem)] space-y-4">
-              {chats.length === 0 ? (
-                <p className="text-muted-foreground">You are not in any groups.</p>
-              ) : (
-                chats.map((group) => (
-                  <Card
-                    key={group.groupChatId.toString()}
-                    className="card-gradient-light dark:card-gradient-dark shadow-md hover-scale-brightness rounded-md"
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-lg font-semibold text-foreground">
-                        {group.name}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between">
-                        <Button
-                          onClick={() => setSelectedGroup(group)}
-                          variant="default"
-                          size="sm"
-                          className="text-white"
-                        >
-                          Chat
-                        </Button>
-                        <Button
-                          onClick={() => handleJoinLeave(group.groupChatId, true)}
-                          variant="outline"
-                          size="sm"
-                          disabled={leavingGroups.has(group.groupChatId)}
-                          className="bg-red-600"
-                        >
-                          {leavingGroups.has(group.groupChatId) ? "Leaving..." : "Leave"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full mb-10">
+          <div className="flex flex-col gap-6 w-full my-5">
+            {/* Aside Top */}
+            <div className="w-full">
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                Groups You Are In
+              </h2>
+              <div className="overflow-y-auto max-h-[calc(100vh-6rem)] space-y-4">
+                {chats.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    You are not in any groups.
+                  </p>
+                ) : (
+                  chats.map((group) => (
+                    <Card
+                      key={group.groupChatId.toString()}
+                      className="card-gradient-light dark:card-gradient-dark shadow-md hover-scale-brightness rounded-md"
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-foreground">
+                          {group.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex justify-between">
+                          <Button
+                            onClick={() => setSelectedGroup(group)}
+                            variant="default"
+                            size="sm"
+                            className="text-white"
+                          >
+                            Chat
+                          </Button>
+                          <Button
+                            onClick={() =>
+                              handleJoinLeave(group.groupChatId, true)
+                            }
+                            variant="outline"
+                            size="sm"
+                            disabled={leavingGroups.has(group.groupChatId)}
+                            className="bg-red-600"
+                          >
+                            {leavingGroups.has(group.groupChatId)
+                              ? "Leaving..."
+                              : "Leave"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Others Follow */}
-          <div className="flex-1 flex flex-col space-y-6 overflow-hidden">
             {/* All Groups */}
             <div>
               <h2 className="text-2xl font-semibold text-foreground mb-4 my-5">
@@ -284,13 +290,17 @@ export default function Groups() {
                           </Button>
                         ) : (
                           <Button
-                            onClick={() => handleJoinLeave(group.groupChatId, false)}
+                            onClick={() =>
+                              handleJoinLeave(group.groupChatId, false)
+                            }
                             variant="default"
                             size="sm"
                             disabled={joiningGroups.has(group.groupChatId)}
                             className="text-white"
                           >
-                            {joiningGroups.has(group.groupChatId) ? "Joining..." : "Join"}
+                            {joiningGroups.has(group.groupChatId)
+                              ? "Joining..."
+                              : "Join"}
                           </Button>
                         )}
                       </CardContent>
@@ -299,7 +309,10 @@ export default function Groups() {
                 })}
               </div>
             </div>
+          </div>
 
+          {/* Others Follow */}
+          <div className="flex-1 w-full space-y-6 overflow-hidden my-5 mb-10">
             {/* Chat Area */}
             <div className="flex-1 flex flex-col">
               <Card className="card-gradient-light dark:card-gradient-dark mb-10 shadow-md shadow-amber-500 rounded-md flex flex-col h-full">
@@ -333,13 +346,17 @@ export default function Groups() {
                         >
                           <p className="text-xs">
                             {senderUsernames[msg.sender] ||
-                              `${msg.sender.slice(0, 6)}...${msg.sender.slice(-4)}`}
+                              `${msg.sender.slice(0, 6)}...${msg.sender.slice(
+                                -4
+                              )}`}
                           </p>
-                          <p className="text-sm text-black font-semibold py-1">
+                          <p className="text-base text-gray-200 my-3 font-semibold py-1">
                             {msg.content}
                           </p>
                           <p className="text-xs text-right opacity-70">
-                            {new Date(Number(msg.timestamp) * 1000).toLocaleTimeString()}
+                            {new Date(
+                              Number(msg.timestamp) * 1000
+                            ).toLocaleTimeString()}
                           </p>
                         </div>
                       ))}
@@ -352,7 +369,9 @@ export default function Groups() {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder="Type a message..."
-                      onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && handleSendMessage()
+                      }
                     />
                     <Button
                       onClick={handleSendMessage}
@@ -370,5 +389,13 @@ export default function Groups() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Groups() {
+  return (
+    <AuthGuard>
+      <GroupsContent />
+    </AuthGuard>
   );
 }

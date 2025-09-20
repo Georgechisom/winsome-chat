@@ -5,8 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
 import { Menu, X } from "lucide-react";
 import { FloatingDarkModeToggle } from "./FloatingDarkModeToggle";
+import { useWallet } from "@/hooks/useWallet";
+import { usePriceAutomation } from "@/hooks/usePriceAutomation";
 
-const navLinks = [
+const baseNavLinks = [
   { name: "Home", href: "/" },
   { name: "Profiles", href: "/profiles" },
   { name: "Chat", href: "/chats" },
@@ -18,6 +20,20 @@ export function Navbar() {
   const pathname = usePathname();
   const [scrollProgress, setScrollProgress] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { address, isConnected } = useWallet();
+  const { ownerAddress } = usePriceAutomation();
+
+  // Check if current user is admin
+  const isAdmin =
+    address &&
+    ownerAddress &&
+    address.toLowerCase() === ownerAddress.toLowerCase();
+
+  // Add admin link if user is admin
+  const navLinks = [
+    ...baseNavLinks,
+    ...(isAdmin ? [{ name: "Admin", href: "/admin" }] : []),
+  ];
 
   useEffect(() => {
     const onScroll = () => {

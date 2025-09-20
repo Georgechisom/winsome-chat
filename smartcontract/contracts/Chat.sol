@@ -11,7 +11,6 @@ contract WinsomeChat is Ownable {
         string contentCid;
     }
 
-    
     struct GroupChat {
         string name;
         mapping(address => bool) members;
@@ -209,7 +208,6 @@ contract WinsomeChat is Ownable {
         priceAutomation = _automation;
     }
 
-    // Add this function for the automation to send messages
     function sendPriceMessage(uint256 roomId, string calldata message)
         external
         onlyPriceAutomation

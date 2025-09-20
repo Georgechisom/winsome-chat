@@ -10,13 +10,14 @@ import { useChat, Message } from "../../hooks/useChat";
 import { toast } from "react-hot-toast";
 import { getPinataUrl } from "../../lib/pinata";
 import { encodePacked, keccak256, Address, isAddress } from "viem";
+import { AuthGuard } from "@/components/AuthGuard";
 
 interface PrivateChat {
   chatId: bigint;
   otherUser: ProfileData & { address: string };
 }
 
-export default function Chats() {
+function ChatsContent() {
   const { address } = useWallet();
   const { getAllUsers, currentProfile, allUsers, isLoadingAllUsers } =
     useUserProfile();
@@ -228,7 +229,7 @@ export default function Chats() {
                 className="w-16 h-16 rounded-full mx-auto mb-4 object-cover"
               />
             ) : (
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-xl mx-auto mb-4">
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center mx-auto justify-center text-primary-foreground font-bold text-xl mx-auto mb-4">
                 {currentProfile?.username?.charAt(0).toUpperCase() || "N"}
               </div>
             )}
@@ -558,6 +559,14 @@ export default function Chats() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function Chats() {
+  return (
+    <AuthGuard>
+      <ChatsContent />
+    </AuthGuard>
   );
 }
 

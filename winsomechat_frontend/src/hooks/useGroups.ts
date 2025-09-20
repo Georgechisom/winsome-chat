@@ -15,6 +15,7 @@ import {
   getAllGroupChats,
   leaveGroupChat as leaveGroupChatUtil,
 } from "../lib/chatMessaging";
+import { usePriceAutomation, PriceFeedMessage } from "./usePriceAutomation";
 
 // Contract address - should be set via environment variable
 const CHAT_CONTRACT_ADDRESS = process.env
@@ -34,6 +35,9 @@ export const useGroups = () => {
     useState<bigint>(BigInt(0));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  // Price automation hook
+  const { priceMessages } = usePriceAutomation();
 
   // Write contract hooks
   const {
@@ -148,18 +152,39 @@ export const useGroups = () => {
     [writeLeaveGroup]
   );
 
-  const fetchMessages = useCallback(async (groupChatId: bigint) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getMessages(groupChatId);
-      setMessages(data);
-    } catch (e) {
-      setError(e as Error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchMessages = useCallback(
+    async (groupChatId: bigint) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getMessages(groupChatId);
+        // Merge price feed messages for this group if any
+        const priceFeedMsgs: Message[] = [];
+        if (priceMessages) {
+          Object.values(priceMessages).forEach((pfm: PriceFeedMessage) => {
+            if (pfm.groupId.toString() === groupChatId.toString()) {
+              priceFeedMsgs.push({
+                sender: "0x0000000000000000000000000000000000000000",
+                timestamp: BigInt(pfm.timestamp),
+                content: pfm.message,
+              });
+            }
+          });
+          console.log("feeds", priceFeedMsgs);
+        }
+        // Combine and sort by timestamp ascending
+        const combinedMessages = [...data, ...priceFeedMsgs].sort(
+          (a, b) => Number(a.timestamp) - Number(b.timestamp)
+        );
+        setMessages(combinedMessages);
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [priceMessages]
+  );
 
   const fetchGroupMemberCount = useCallback(async (groupChatId: bigint) => {
     try {

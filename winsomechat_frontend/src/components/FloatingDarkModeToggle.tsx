@@ -4,10 +4,12 @@ import React, { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
 export function FloatingDarkModeToggle() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true); // Default to dark mode
 
   useEffect(() => {
-    setDarkMode(document.documentElement.classList.contains("dark"));
+    // Check if dark class exists on document element
+    const isDark = document.documentElement.classList.contains("dark");
+    setDarkMode(isDark);
   }, []);
 
   useEffect(() => {

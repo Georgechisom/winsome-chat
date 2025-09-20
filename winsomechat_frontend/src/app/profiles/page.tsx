@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { useUserProfile, ProfileData } from "../../hooks/useUserProfile";
 import { toast } from "react-toastify";
 import { getPinataUrl } from "../../lib/pinata";
+import { AuthGuard } from "@/components/AuthGuard";
 
-export default function Profiles() {
+function ProfilesContent() {
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const { getAllUsers, isLoadingAllUsers } = useUserProfile();
@@ -100,5 +101,13 @@ export default function Profiles() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Profiles() {
+  return (
+    <AuthGuard>
+      <ProfilesContent />
+    </AuthGuard>
   );
 }
